@@ -4,16 +4,13 @@ import numpy as np
 
 # Inputs Enter Here
 M1 = 2.0 # Mach 1 Entry
-x = 1 # x Coordinate Entry
-y = 1 # y Coordinate Entry
+a = np.pi - 0.05
 gamma = 1.4
 
-def position(x,y):
+def alpha_s(a,m):
     # Calculates the angle and entropy angle
-    a = np.arctan2(y, x)
-    a = (a + 2 * np.pi) % np.pi
     a_s = np.arctan(1/(m * (1/np.tan(a))))
-    return a, a_s
+    return a_s
 
 def calculate_m(M1,gamma):
     # Solve for m using M1
@@ -105,7 +102,7 @@ def make_A(a,a_s,ap,decay_rate,Zeta,M1,M2,m,gamma):
 
 m = calculate_m(M1,gamma) # Solve m
 M2 = calculate_M2(M1,gamma) # Solve M2
-a, a_s = position(x,y) # Solve for angles
+a_s = alpha_s(a,m) # Solve for angles
 ap, decay_rate, Zeta = calculate_decay_rate(M2,m,a) #Solve Other flow properties 
 
 A = make_A(a,a_s,ap,decay_rate,Zeta,M1,M2,m,gamma) # Build A matrix
@@ -154,3 +151,4 @@ print("Zpv:", Zpv) # Print Zpv
 print("Zps:", Zps) # Print Zps
 print("Zpp:", Zpp) # Print Zpp
 print("Zpx:", Zpx) # Print Zpx
+
