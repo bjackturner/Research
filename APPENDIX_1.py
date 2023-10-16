@@ -3,8 +3,8 @@
 import numpy as np
 
 # Inputs Enter Here
-M1 = 2.0 # Mach 1 Entry
-a = np.pi - 0.05
+M1 = 8.0 # Mach 1 Entry
+a = np.pi/2
 gamma = 1.4
 
 def alpha_s(a,m):
@@ -20,6 +20,7 @@ def calculate_m(M1,gamma):
 def calculate_M2(M1,gamma):
     # Solve for M2 using M1
     M2 = np.sqrt((2 + ((gamma -1)*(M1**2)))/((2*gamma*(M1**2)) - (gamma -1)))
+    print(M2)
     return M2
 
 def calculate_decay_rate(M2,m,a):
@@ -33,7 +34,7 @@ def calculate_decay_rate(M2,m,a):
         ap = np.arctan(1/((1/np.tan(acp)) * ((np.tan(ac)/np.tan(a)) - (1/M2**2) * np.sqrt((np.tan(ac)/np.tan(a))**2 - 1) )))
         Zeta = 1
 
-    elif a > ac and a < np.pi/2:
+    elif a > ac and a <= np.pi/2:
         # NonPropagative Regime both slow and fast wave
         ap = np.arctan(1/(((1/np.tan(acp)) * (1/np.tan(a)))/(1/np.tan(ac))))
         decay_rate = (abs((1/np.tan(acp))*np.sin(ap))/M2)*np.sqrt(1-(np.tan(ac)/np.tan(a))**2)
@@ -64,11 +65,13 @@ def calculate_decay_rate_prime(M1,M2,m,a,aPrime):
             ap = np.arctan(1/((1/np.tan(acp)) * ((np.tan(ac)/np.tan(aPrime)) - (1/M2**2) * np.sqrt((np.tan(ac)/np.tan(aPrime))**2 - 1) )))
             Zeta = 1
 
-    elif a > ac and a < np.pi/2:
+    elif a > ac and a <= np.pi/2:
         # NonPropagative Regime both slow and fast wave
         ap = np.arctan(1/(((1/np.tan(acp)) * (1/np.tan(aPrime)))/(1/np.tan(ac))))
         decay_rate = (abs((1/np.tan(acp))*np.sin(ap))/M2)*np.sqrt(1-(np.tan(ac)/np.tan(aPrime))**2)
+        print(decay_rate)
         Zeta = np.sqrt(1 - decay_rate**2 + 2*1J*decay_rate*np.cos(ap))
+        print(Zeta)
 
     return ap, decay_rate, Zeta
 
@@ -144,11 +147,11 @@ d = np.array([
     (m**2/gamma) * ((1/M1**2) + (np.cos(a)/M1))
 ])
 
-[Zpv, Zps, Zpp, ZpxSol] = np.linalg.solve(A,d) # Solve for Z vaules of equation A27
+[Zpv, Zps, Zpp, ZpxSol] = np.linalg.solve(APrime,d) # Solve for Z vaules of equation A27
 Zpx = ZpxSol / (np.sin(a)/np.sin(aPrime)) # Solve for Zpx vaule of equation A27
 
 print("Zpv:", Zpv) # Print Zpv
 print("Zps:", Zps) # Print Zps
 print("Zpp:", Zpp) # Print Zpp
 print("Zpx:", Zpx) # Print Zpx
-
+print(M2)
