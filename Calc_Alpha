@@ -254,7 +254,7 @@ rad = np.pi / 180
 M1 = 8 # Mach 1 Entry
 gamma = 5/3
 
-ZppNorm, ZppStrong, ZppWeak = [], [], []
+ZppNorm, ZppStrong, ZppWeak, ZppRefNorm, ZppRefStrong, ZppRefWeak, ZspNorm, ZspStrong, ZspWeak, ZvpNorm, ZvpStrong, ZvpWeak = [], [], [], [], [], [], [], [], [], [], [], []
 
 # Normal Shock ============================================================================================================
 aM, acu, acl, ac = Crit_Angles(M1, gamma, 90*rad)
@@ -323,6 +323,11 @@ plt.grid()
 plt.ylim(11,20)
 plt.savefig('/workspaces/Research/Images/ZppWeak.png')
 plt.show
+
+plt.cla()
+plt.clf()
+plt.close()
+
 
 # plt.figure
 # a = -ac
