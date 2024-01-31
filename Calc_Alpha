@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import scipy as sp
 import pandas as pd
 
+rad = np.pi / 180
+
 def th_tbm(m,b, gamma): #explicit form of the theta-beta-M relation
     th = np.arctan((2*(m*np.sin(b))**2-2)/(m**2*(gamma+np.cos(2*b))+2)/np.tan(b))
     return abs(th)
@@ -81,7 +83,7 @@ def calculate_decay_rate(M2,m,a):
         decay_rate = 0
         Zeta = 1
 
-    elif a > 100:
+    else:
         # NonPropagative Regime both slow and fast wave
         ap = np.arctan(1/(((1/np.tan(acp)) * (1/np.tan(a)))/(1/np.tan(ac))))
         decay_rate = (abs((1/np.tan(acp))*np.sin(ap))/M2)*np.sqrt(1-(np.tan(ac)/np.tan(a))**2)
@@ -94,6 +96,7 @@ def calculate_decay_rate_prime(M1,M2,m,a,aPrime):
     # Solve for Decay Rate, Zeta, and Pressure Wave Angle (ap). Values found if regime is propagative or nonpropagative
     ac = np.arctan((m * M2)/(np.sqrt(1 - M2**2))) # Critical Angle
     acp = np.arccos(-M2) # Resulting Angle of Pressure 
+
     # Upper and Lower angles of critical region (Acoustic Waves)
     aM = np.arccos(-1/M1)
     acu = bisection_solve(0.000000001, np.pi, -1, 1e-6, M1, M2, m) # Find acl
@@ -112,7 +115,7 @@ def calculate_decay_rate_prime(M1,M2,m,a,aPrime):
             ap = ap + np.pi
         decay_rate = 0
         Zeta = 1
-
+        
     return ap, decay_rate, Zeta
 
 def equation_to_solve(a, sign, M1, M2, m):
@@ -176,7 +179,7 @@ def moore(phi, M1, gamma, beta, CritLower, CritUpper):
 
     return PhiVort, PhiRefract, decay_rate, zeta
 
-def Calc_Zpp(a, M1, beta):
+def Calc_Zpp(a, M1, beta, gamma):
     # Amplitude ratios for incident acoustic waves (V = vorticity, S = entropy, P = pressure/ acoustic, X = position)
 
     # Post Shock Relations 
@@ -229,11 +232,19 @@ def Calc_Zss(a,M1,beta):
 
     [Zsv, Zss, Zsp, Zsx] = np.linalg.solve(A, b) # Solve for Z vaules of equation A18
 
-    return Zss
+    return Zsp * PR
 
 def Calc_Zvv(a,M1,beta):
-    M2, PR, m, TR = calculate_M2(M1,gamma,beta) # Solve M2
+
+    # Post Shock Relations 
+    if beta == np.pi/2: # Normal Shock
+        M2, PR, m, TR = calculate_M2(M1, gamma, beta)
+
+    elif beta < np.pi/2: # Oblique Shock
+        M1, M2, PR, m, TR = calculate_M2(M1, gamma, beta)
+
     a_s = alpha_s(a,m) # Solve for angles
+
     ap, decay_rate, Zeta = calculate_decay_rate(M2,m,a) #Solve Other flow properties 
 
     A = make_A(a,a_s,ap,decay_rate,Zeta,M2,m,gamma) # Build A matrix
@@ -242,121 +253,370 @@ def Calc_Zvv(a,M1,beta):
 
     [Zvv, Zvs, Zvp, Zvx] = np.linalg.solve(A,c) # Solve for Z vaules of equation A20
 
-    return Zvv/m
+    return Zvp * PR / M1
 
-WesNorm = pd.read_csv('Data/WestphalNorm.csv')
-WesStrong = pd.read_csv('Data/WestphalStrong.csv')
-WesWeak = pd.read_csv('Data/WestphalWeak.csv')
+ZppNormData = pd.read_csv('Data/ZppNorm.csv')
+ZppStrongData = pd.read_csv('Data/ZppStrong.csv')
+ZppWeakData = pd.read_csv('Data/ZppWeak.csv')
 
-rad = np.pi / 180
+ZspNormData = pd.read_csv('Data/ZspNorm.csv')
+ZspStrongData = pd.read_csv('Data/ZspStrong.csv')
+ZspWeakData = pd.read_csv('Data/ZspWeak.csv')
+
+def ZppNormPlot(M1, gamma):
+
+    # Zpp Normal Shock ============================================================================================================
+    
+    ZppNorm = []
+    
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 90*rad)
+
+    alphaNorm = np.linspace(-acl/rad, acl/rad, 200)
+
+    for a in alphaNorm:
+        ZppNorm.append(Calc_Zpp(a*rad,M1,90*rad, gamma))
+
+    plt.figure
+    plt.plot(alphaNorm,np.real(ZppNorm), label = 'Calculated Solution', color = 'blue')
+
+    # plt.plot(ZppNormData.iloc[:,0],ZppNormData.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim(32,45)
+    plt.savefig('/workspaces/Research/Images/ZppNorm.png')
+    plt.show
+    print("acl = ",acl*180/np.pi,"acu = ",acu*180/np.pi)
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+def ZppStrongPlot(M1, gamma):
+
+    # Zpp Strong Oblique Shock ===================================================================================================
+
+    ZppStrong = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 65.89*rad)
+
+    alphaStrong = np.linspace(-acl/rad, acl/rad, 200)
+
+    for a in alphaStrong:
+        ZppStrong.append(Calc_Zpp(a*rad,M1,65.89*rad))
+
+    plt.figure
+    plt.plot(alphaStrong,np.real(ZppStrong), label = 'Calculated Solution', color = 'blue')
+
+    plt.plot(ZppStrongData.iloc[:,0],ZppStrongData.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim(25,35)
+    plt.savefig('/workspaces/Research/Images/ZppStrong.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+def ZppWeakPlot(M1, gamma):
+
+    # Zpp Weak Oblique Shock ===================================================================================================
+
+    ZppWeak = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 35.09*rad)
+
+    alphaWeak = np.linspace(-acl/rad, acl/rad, 200)
+
+    for a in alphaWeak:
+        ZppWeak.append(Calc_Zpp(a*rad,M1,35.09*rad))
+
+    plt.figure
+    plt.plot(alphaWeak,np.real(ZppWeak), label = 'Calculated Solution', color = 'blue')
+
+    plt.plot(ZppWeakData.iloc[:,0],ZppWeakData.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim(11,20)
+    plt.savefig('/workspaces/Research/Images/ZppWeak.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+def ZspNormPlot(M1, gamma):
+
+    # Zsp Normal Shock ============================================================================================================
+
+    ZspNorm = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 90*rad)
+
+    alphaNorm = np.linspace(-ac/rad, ac/rad, 200)
+
+    for a in alphaNorm:
+        ZspNorm.append(Calc_Zss(a*rad,M1,90*rad))
+
+    plt.figure
+    plt.plot(alphaNorm,np.real(ZspNorm), label = 'Calculated Solution', color = 'blue')
+
+    plt.plot(ZspNormData.iloc[:,0],ZspNormData.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim()
+    plt.savefig('/workspaces/Research/Images/ZspNorm.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+def ZspStrongPlot(M1, gamma):
+
+    # Zsp Strong Oblique Shock ============================================================================================================
+
+    ZspStrong = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 65.89*rad)
+
+    alphaNorm = np.linspace(-ac/rad, ac/rad, 200)
+
+    for a in alphaNorm:
+        ZspStrong.append(Calc_Zss(a*rad,M1,65.89*rad))
+
+    plt.figure
+    plt.plot(alphaNorm,np.real(ZspStrong), label = 'Calculated Solution', color = 'blue')
+
+    plt.plot(ZspStrongData.iloc[:,0],ZspStrongData.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim()
+    plt.savefig('/workspaces/Research/Images/ZspStrong.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+def ZspWeakPlot(M1, gamma):
+    
+    # Zsp Weak Oblique Shock ============================================================================================================
+
+    ZspWeak = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 35.09*rad)
+
+    alphaNorm = np.linspace(-ac/rad, ac/rad, 200)
+
+    for a in alphaNorm:
+        ZspWeak.append(Calc_Zss(a*rad,M1,35.09*rad))
+
+    plt.figure
+    plt.plot(alphaNorm,np.real(ZspWeak), label = 'Calculated Solution', color = 'blue')
+
+    plt.plot(ZspWeakData.iloc[:,0],ZspWeakData.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim()
+    plt.savefig('/workspaces/Research/Images/ZspWeak.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+def ZvpNormPlot(M1, gamma):
+    # Zpp Normal Shock ============================================================================================================
+    
+    ZvpNorm = []
+    
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 90*rad)
+
+    alphaNorm = np.linspace(-ac/rad, ac/rad, 200)
+
+    for a in alphaNorm:
+        ZvpNorm.append(Calc_Zvv(a*rad,M1,90*rad))
+
+    plt.figure
+    plt.plot(alphaNorm,np.real(ZvpNorm), label = 'Calculated Solution', color = 'blue')
+
+    # plt.plot(WesNorm.iloc[:,0],WesNorm.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim()
+    plt.savefig('/workspaces/Research/Images/ZvpNorm.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+def ZvpStrongPlot(M1, gamma):
+
+    # Zpp Strong Oblique Shock ===================================================================================================
+
+    ZvpStrong = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 65.89*rad)
+
+    alphaStrong = np.linspace(-ac/rad, ac/rad, 200)
+
+    for a in alphaStrong:
+        ZvpStrong.append(Calc_Zvv(a*rad,M1,65.89*rad))
+
+    plt.figure
+    plt.plot(alphaStrong,np.real(ZvpStrong), label = 'Calculated Solution', color = 'blue')
+
+    # plt.plot(WesStrong.iloc[:,0],WesStrong.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim()
+    plt.savefig('/workspaces/Research/Images/ZvpStrong.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+def ZvpWeakPlot(M1, gamma):
+
+    # Zpp Weak Oblique Shock ===================================================================================================
+
+    ZvpWeak = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 35.09*rad)
+
+    alphaWeak = np.linspace(-ac/rad, ac/rad, 200)
+
+    for a in alphaWeak:
+        ZvpWeak.append(Calc_Zvv(a*rad,M1,35.09*rad))
+
+    plt.figure
+    plt.plot(alphaWeak,np.real(ZvpWeak), label = 'Calculated Solution', color = 'blue')
+
+    # plt.plot(WesWeak.iloc[:,0],WesWeak.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim()
+    plt.savefig('/workspaces/Research/Images/ZvpWeak.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+def ZppRefNormPlot(M1, gamma):
+    # Zpp Normal Shock ============================================================================================================
+    
+    ZppRefNorm = []
+    
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 90*rad)
+
+    alphaNorm = np.concatenate((np.linspace(-180, -acu/rad, 100), np.linspace(acu/rad, 180, 100)))
+
+    for a in alphaNorm:
+        ZppRefNorm.append(Calc_Zpp(a*rad,M1,90*rad))
+
+    plt.figure
+    plt.plot(alphaNorm,np.real(ZppRefNorm), label = 'Calculated Solution', color = 'blue')
+
+    # plt.plot(WesNorm.iloc[:,0],WesNorm.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.savefig('/workspaces/Research/Images/ZppRefNorm.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+def ZppRefStrongPlot(M1, gamma):
+
+    # Zpp Strong Oblique Shock ===================================================================================================
+
+    ZppStrong = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 65.89*rad)
+
+    alphaStrong = np.linspace(-acl/rad, acl/rad, 200)
+
+    for a in alphaStrong:
+        ZppStrong.append(Calc_Zpp(a*rad,M1,65.89*rad))
+
+    plt.figure
+    plt.plot(alphaStrong,np.real(ZppStrong), label = 'Calculated Solution', color = 'blue')
+
+    # plt.plot(WesStrong.iloc[:,0],WesStrong.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim(25,35)
+    plt.savefig('/workspaces/Research/Images/ZppStrong.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
+def ZppRefWeakPlot(M1, gamma):
+
+    # Zpp Weak Oblique Shock ===================================================================================================
+
+    ZppWeak = []
+
+    aM, acu, acl, ac = Crit_Angles(M1, gamma, 35.09*rad)
+
+    alphaWeak = np.linspace(-acl/rad, acl/rad, 200)
+
+    for a in alphaWeak:
+        ZppWeak.append(Calc_Zpp(a*rad,M1,35.09*rad))
+
+    plt.figure
+    plt.plot(alphaWeak,np.real(ZppWeak), label = 'Calculated Solution', color = 'blue')
+
+    # plt.plot(WesWeak.iloc[:,0],WesWeak.iloc[:,1], label = 'Westphal Solution', color = 'Red')
+
+    plt.xlabel('Theta [deg]')
+    plt.ylabel("p2'/p1")
+    plt.grid()
+    plt.ylim(11,20)
+    plt.savefig('/workspaces/Research/Images/ZppWeak.png')
+    plt.show
+
+    plt.cla()
+    plt.clf()
+    plt.close()
 
 # Inputs Enter Here
 M1 = 8 # Mach 1 Entry
-gamma = 5/3
+gamma = 7/5
 
-ZppNorm, ZppStrong, ZppWeak, ZppRefNorm, ZppRefStrong, ZppRefWeak, ZspNorm, ZspStrong, ZspWeak, ZvpNorm, ZvpStrong, ZvpWeak = [], [], [], [], [], [], [], [], [], [], [], []
+ZppNormPlot(8, 7/5)
+# ZppStrongPlot(M1, gamma)
+# ZppWeakPlot(M1, gamma)
 
-# Normal Shock ============================================================================================================
-aM, acu, acl, ac = Crit_Angles(M1, gamma, 90*rad)
+# ZspNormPlot(M1, gamma)
+# ZspStrongPlot(M1, gamma)
+# ZspWeakPlot(M1, gamma)
 
-alphaNorm = np.linspace(-acl/rad, acl/rad, 200)
+# ZvpNormPlot(M1, gamma)
+# ZvpStrongPlot(M1, gamma)
+# ZvpWeakPlot(M1, gamma)
 
-for a in alphaNorm:
-    ZppNorm.append(Calc_Zpp(a*rad,M1,90*rad))
-
-plt.figure
-plt.plot(alphaNorm,np.real(ZppNorm), label = 'Calculated Solution', color = 'blue')
-
-plt.plot(WesNorm.iloc[:,0],WesNorm.iloc[:,1], label = 'Westphal Solution', color = 'Red')
-
-plt.xlabel('Theta [deg]')
-plt.ylabel("p2'/p1")
-plt.grid()
-plt.ylim(30,40)
-plt.savefig('/workspaces/Research/Images/ZppNorm.png')
-plt.show
-
-plt.cla()
-plt.clf()
-plt.close()
-
-# Strong Oblique Shock ===================================================================================================
-aM, acu, acl, ac = Crit_Angles(M1, gamma, 65.89*rad)
-
-alphaStrong = np.linspace(-acl/rad, acl/rad, 200)
-
-for a in alphaStrong:
-    ZppStrong.append(Calc_Zpp(a*rad,M1,65.89*rad))
-
-plt.figure
-plt.plot(alphaStrong,np.real(ZppStrong), label = 'Calculated Solution', color = 'blue')
-
-plt.plot(WesStrong.iloc[:,0],WesStrong.iloc[:,1], label = 'Westphal Solution', color = 'Red')
-
-plt.xlabel('Theta [deg]')
-plt.ylabel("p2'/p1")
-plt.grid()
-plt.ylim(25,35)
-plt.savefig('/workspaces/Research/Images/ZppStrong.png')
-plt.show
-
-plt.cla()
-plt.clf()
-plt.close()
-
-# Weak Oblique Shock ===================================================================================================
-aM, acu, acl, ac = Crit_Angles(M1, gamma, 35.09*rad)
-
-alphaWeak = np.linspace(-acl/rad, acl/rad, 200)
-
-for a in alphaWeak:
-    ZppWeak.append(Calc_Zpp(a*rad,M1,35.09*rad))
-
-plt.figure
-plt.plot(alphaWeak,np.real(ZppWeak), label = 'Calculated Solution', color = 'blue')
-
-plt.plot(WesWeak.iloc[:,0],WesWeak.iloc[:,1], label = 'Westphal Solution', color = 'Red')
-
-plt.xlabel('Theta [deg]')
-plt.ylabel("p2'/p1")
-plt.grid()
-plt.ylim(11,20)
-plt.savefig('/workspaces/Research/Images/ZppWeak.png')
-plt.show
-
-plt.cla()
-plt.clf()
-plt.close()
-
-
-# plt.figure
-# a = -ac
-# ZssList = []
-# alpha2 = []
-
-# while a < ac:
-#      ZssList.append(-Calc_Zpp(a,M1,beta)/Calc_Zss(a,M1,beta))
-#      alpha2.append(a * 180/pi)
-#      a = a + 1e-2
-
-
-# plt.plot(alpha2,np.real(ZssList))
-# plt.xlabel('Theta [deg]')
-# plt.ylabel("Ge")
-# plt.grid()
-# plt.ylim(-60,0)
-# plt.savefig('/workspaces/Research/Zss.png')
-
-
-# while a < ac:
-#     ZvvList.append((Calc_Zvv(a,M1,beta)))
-#     alpha3.append(a * 180/pi)
-#     a = a + 1e-2
-
-
-# plt.plot(alpha3,ZvvList)
-# plt.xlabel('Theta [deg]')
-# plt.ylabel("Gv")
-# plt.grid()
-# plt.savefig('/workspaces/Research/Zvv.png')
-
+# ZppRefNormPlot(M1, gamma)
+# # ZppRefStrongPlot(M1, gamma)
+# # ZppRefWeakPlot(M1, gamma)
